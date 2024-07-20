@@ -82,6 +82,10 @@ class BhargavaCube(SageObject):
         return cb
 
     def _from_bqf_triple(self, bqf1, bqf2, bqf3):
+        """Reconstruct a cube that gives three given (primitive) binary quadratic forms
+        whose composition is an identity class.
+        Based on the article "Composition and Bhargava's Cubes" by Florian Bouyer.
+        """
         D = bqf1.discriminant()
         assert bqf1.is_primitive()
         assert bqf2.is_primitive()
@@ -164,11 +168,28 @@ class BhargavaCube(SageObject):
         """
         Right action of SL_2(Z) x SL_2(Z) x SL_2(Z).
         Same as left action with transposed matrices.
+        Also Florian Bouyer's article "Composition and Bhargava's Cubes" uses this right action.
         """
         assert isinstance(triple, (list, tuple)) and len(triple) == 3
         mat1, mat2, mat3 = [matrix(ZZ, x).transpose() for x in triple]
         return self.matrices_action_left((mat1, mat2, mat3))
         
+    def normal_form(self):
+        """
+        Transform a cube into an equivalent cube of normal form, i.e. a = 1 and b = c = e = 0.
+        """
+        raise NotImplementedError
+        res = BhargavaCube(self)
+
+        # a = 1
+        if res._a == 1:
+            pass
+
+        # b = c = e = 0
+        pass
+
+        assert res._a == 1 and res._b == 0 and res._c == 0 and res._d == 0
+        return res
 
     @staticmethod
     def id(D):
@@ -215,3 +236,22 @@ class BhargavaCube(SageObject):
 
     def __str__(self):
         return repr(self)
+
+    def show(self):
+        """
+        Show 3D shape.
+        Based on this answer: https://ask.sagemath.org/question/63031/how-can-we-label-3d-cube/?answer=63035#post-id-63035
+        """
+        v_opt = dict(fontsize="200%", fontstyle="italic", color="blue")
+        f_opt = dict(fontsize="200%", fontstyle="italic", color="black")
+
+        fig = cube(center=(0.5,0.5,0.5), size=1, color="white", frame_thickness=2, frame_color="black", opacity=0.2, threejs_flat_shading=True)
+        fig += (text3d(f"c={self._c}", (1.02,0,0), **v_opt) + text3d(f"d={self._d}", (1.02,1.02,0), **v_opt)
+                + text3d(f"b={self._b}", (1.02,1.02,1.02), **v_opt) + text3d(f"a={self._a}", (1.02,0,1.02), **v_opt)
+                + text3d(f"g={self._g}", (-0.02,0,0), **v_opt) + text3d(f"h={self._h}", (-0.02,1.02,0), **v_opt)
+                + text3d(f"f={self._f}", (-0.02,1.02,1.02), **v_opt) + text3d(f"e={self._e}", (-0.02,0,1.02), **v_opt))
+        # TODO: fix text orientation on faces
+        fig += (text3d("M1", (1.05,0.5,0.5),**f_opt) + text3d("N1", (-0.05,0.5,0.5),**f_opt)
+                + text3d("M2", (0.5,-0.05,0.5),**f_opt) + text3d("N2", (0.5,1.05,0.5),**f_opt)
+                + text3d("M3", (0.5,0.5,1.05),**f_opt) + text3d("N3", (0.5,0.5,-0.05),**f_opt))
+        show(fig, frame=False)
