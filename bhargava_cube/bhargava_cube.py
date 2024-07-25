@@ -62,10 +62,12 @@ class BhargavaCube(SageObject):
     def _check_idx(self, i):
         assert i in [1, 2, 3], "Index out of range - i should be one of 1, 2, 3"
 
-    def _check_projective(self):
+    def is_projective(self):
         """Check if a given set of integers form a 'projective' cube, i.e. all Q_i's are primitive."""
-        for i in [1, 2, 3]:
-            assert self.Q(i).is_primitive(), "Q_" + str(i) + " is not primitive."
+        return self.Q(1).is_primitive() and self.Q(2).is_primitive() and self.Q(3).is_primitive()
+
+    def _check_projective(self):
+        assert self.is_projective()
 
     def _from_bqf_pair(self, bqf1, bqf2):
         assert bqf1.is_primitive(), "First form is not primitive"
@@ -92,6 +94,7 @@ class BhargavaCube(SageObject):
         assert bqf3.is_primitive()
         assert (bqf1 * bqf2 * bqf3).reduced_form() == BinaryQF.principal(D)
 
+        
         raise NotImplementedError
         # check primitive
 
@@ -138,57 +141,115 @@ class BhargavaCube(SageObject):
     def matrices_action_left(self, triple):
         """
         Left ction of SL_2(Z) x SL_2(Z) x SL_2(Z).
-        Following Bhargava's paper.
+        The triple (gamma_1, gamma_2, gamma_3) with gamma_i = [[r_i, s_i], [t_i, u_i]] acts as
+
+        (M_i, N_i) -> (r_i * M_i + s_i * N_i, t_i * M_i, u_i * N_i)
+
+        which is equivalent to
+
+        (M_{i-1}, N_{i-1}) -> (M_{i-1} * gamam_i^T, N_{i-1} * gamma_i^T)
+
+        or
+
+        (M_{i+1}, N_{i+1}) -> (gamma_i * M_{i+1}, gamma_i * N_{i+1})
+
+
+        with i \in {1, 2, 3}, index modulo 3.
+
+        Following Bhargava's paper. Note that the action of gamma_i's commute each other.
         """
         assert isinstance(triple, (list, tuple)) and len(triple) == 3
-        mat1, mat2, mat3 = [matrix(ZZ, x) for x in triple]
-        r1, s1, t1, u1 = mat1[0, 0], mat1[0, 1], mat1[1, 0], mat1[1, 1]
-        r2, s2, t2, u2 = mat2[0, 0], mat2[0, 1], mat2[1, 0], mat2[1, 1]
-        r3, s3, t3, u3 = mat3[0, 0], mat3[0, 1], mat3[1, 0], mat3[1, 1]
-
-        res = BhargavaCube(self)
-
-        # mat1
-        M1_ = r1 * res.M(1) + s1 * res.N(1)
-        N1_ = t1 * res.M(1) + u1 * res.N(1)
-        res = BhargavaCube([M1_[0][0], M1_[0][1], M1_[1][0], M1_[1][1], N1_[0][0], N1_[0][1], N1_[1][0], N1_[1][1]])
-
-        # mat2
-        M2_ = r2 * res.M(2) + s2 * res.N(2)
-        N2_ = t2 * res.M(2) + u2 * res.N(2)
-        res = BhargavaCube([M2_[0][0], N2_[0][0], M2_[0][1], N2_[0][1], M2_[1][0], N2_[1][0], M2_[1][1], N2_[1][1]])
-
-        # mat3
-        M3_ = r3 * res.M(3) + s3 * res.N(3)
-        N3_ = t3 * res.M(3) + u3 * res.N(3)
-        res = BhargavaCube([M3_[0][0], M3_[1][0], N3_[0][0], N3_[1][0], M3_[0][1], M3_[1][1], N3_[0][1], N3_[1][1]])
-        return res
+        return self.matrices_action_right([matrix(ZZ, x).transpose() for x in triple])
 
     def matrices_action_right(self, triple):
         """
-        Right action of SL_2(Z) x SL_2(Z) x SL_2(Z).
-        Same as left action with transposed matrices.
+        Right action of SL_2(Z) x SL_2(Z) x SL_2(Z). Same as the left action with transposed matrices.
+
+        The triple (gamma_1, gamma_2, gamma_3) with gamma_i = [[r_i, s_i], [t_i, u_i]] acts as
+
+        (M_i, N_i) -> (r_i * M_i + t_i * N_i, s_i * M_i, u_i * N_i)
+
+        which is equivalent to
+
+        (M_{i-1}, N_{i-1}) -> (M_{i-1} * gamam_i, N_{i-1} * gamma_i)
+
+        or
+
+        (M_{i+1}, N_{i+1}) -> (gamma_i^T * M_{i+1}, gamma_i^T * N_{i+1})
+
+        with i \in {1, 2, 3}, index modulo 3.
+
         Also Florian Bouyer's article "Composition and Bhargava's Cubes" uses this right action.
         """
         assert isinstance(triple, (list, tuple)) and len(triple) == 3
-        mat1, mat2, mat3 = [matrix(ZZ, x).transpose() for x in triple]
-        return self.matrices_action_left((mat1, mat2, mat3))
-        
-    def normal_form(self):
-        """
-        Transform a cube into an equivalent cube of normal form, i.e. a = 1 and b = c = e = 0.
-        """
-        raise NotImplementedError
+        gamma1, gamma2, gamma3 = [matrix(ZZ, x) for x in triple]
+
         res = BhargavaCube(self)
 
-        # a = 1
-        if res._a == 1:
-            pass
+        # gamma1
+        M3_, N3_ = res.M(3) * gamma1, res.N(3) * gamma1
+        data = [M3_[0][0], M3_[1][0], N3_[0][0], N3_[1][0], M3_[0][1], M3_[1][1], N3_[0][1], N3_[1][1]]
+        res = BhargavaCube(data)
+        # gamma2
+        M1_, N1_ = res.M(1) * gamma2, res.N(1) * gamma2
+        data = M1_.list() + N1_.list()
+        res = BhargavaCube(data)
+        # gamma3
+        M2_, N2_ = res.M(2) * gamma3, res.N(2) * gamma3
+        data = [M2_[0][0], N2_[0][0], M2_[0][1], N2_[0][1], M2_[1][0], N2_[1][0], M2_[1][1], N2_[1][1]]
+        res = BhargavaCube(data)
+        return res
 
-        # b = c = e = 0
-        pass
+    def normal_form(self):
+        """
+        Transform a projective cube into an equivalent cube of normal form, i.e. a = 1 and b = c = e = 0.
 
-        assert res._a == 1 and res._b == 0 and res._c == 0 and res._d == 0
+        ```
+            0 ----- f
+          / |     / |
+        1 ------ 0  |
+        |   |    |  |
+        |   g ---|- h
+        | /      | / 
+        0 ------ d
+        ```
+
+        Use Smith normal form and left/right actions of SL_2^3.
+        """
+        if self.discriminant() == 0:
+            raise ValueError("Discriminant should be nonzero")
+        if not self.is_projective():
+            raise ValueError("Cube is not projective")
+
+        res = BhargavaCube(self)
+        I = matrix([[1, 0], [0, 1]])
+        I2 = matrix([[1, 0], [0, -1]])
+
+        # M1
+        _, U1, V1 = res.M(1).smith_form()  # U1 * M1 * V1 = D1
+        if U1.det() == -1:
+            U1 = I2 * U1
+        if V1.det() == -1:
+            V1 = V1 * I2
+        res = res.matrices_action_left((I, I, U1)).matrices_action_right((I, V1, I))
+
+        # M2
+        _, U2, V2 = res.M(2).smith_form()  # U2 * M2 * V2 = D2
+        if U2.det() == -1:
+            U2 = I2 * U2
+        if V2.det() == -1:
+            V2 = V2 * I2
+        res = res.matrices_action_left((U2, I, I)).matrices_action_right((I, I, V2))
+
+        # M3
+        _, U3, V3 = res.M(3).smith_form()  # U3 * M3 * V3 = D3
+        if U3.det() == -1:
+            U3 = I2 * U3
+        if V3.det() == -1:
+            V3 = V3 * I2
+        res = res.matrices_action_left((I, U3, I)).matrices_action_right((V3, I, I))
+
+        assert res._a == 1 and res._b == 0 and res._c == 0 and res._e == 0, "Failed to normalize"
         return res
 
     @staticmethod
@@ -209,6 +270,7 @@ class BhargavaCube(SageObject):
         return BhargavaCube.from_bqf_triple(R1, R2, R3)
 
     def __pow__(self, n):
+        # TODO: Make faster using the class group order when D < 0
         if n == 0:
             return BhargavaCube.id(self.discriminant())
         elif n > 0:
@@ -239,7 +301,7 @@ class BhargavaCube(SageObject):
 
     def show(self):
         """
-        Show 3D shape.
+        Show as 3D cube.
         Based on this answer: https://ask.sagemath.org/question/63031/how-can-we-label-3d-cube/?answer=63035#post-id-63035
         """
         v_opt = dict(fontsize="200%", fontstyle="italic", color="blue")
