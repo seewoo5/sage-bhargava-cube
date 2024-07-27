@@ -51,10 +51,6 @@ class BhargavaCube(SageObject):
         elif isinstance(data, (list, tuple)) and len(data) == 2 and isinstance(data[0], BinaryQF) and isinstance(data[1], BinaryQF):
             # Initialize from two (primitive) binary quadratic forms
             self._from_bqf_pair(*data)
-        elif isinstance(data, (list, tuple)) and len(data) == 3 and isinstance(data[0], BinaryQF) and isinstance(data[1], BinaryQF) and isinstance(data[2], BinaryQF):
-            # Initialize from three (primitive) binary quadratic forms
-            # with same discriminants and their composition is the identity in the class group
-            self._from_bqf_triple(*data)
         elif isinstance(data, BinaryCF):
             # Initialize from a binary cubic form
             self._from_bcf(data)
