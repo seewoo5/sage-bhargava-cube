@@ -66,43 +66,46 @@ class BhargavaCube(SageObject):
         """Check if a given set of integers form a 'projective' cube, i.e. all Q_i's are primitive."""
         return self.Q(1).is_primitive() and self.Q(2).is_primitive() and self.Q(3).is_primitive()
 
+    def is_normal(self):
+        return self._b == 0 and self._c == 0 and self._e == 0
+
     def _check_projective(self):
         assert self.is_projective()
 
     def _from_bqf_pair(self, bqf1, bqf2):
-        assert bqf1.is_primitive(), "First form is not primitive"
-        assert bqf2.is_primitive(), "Second form is not primitive"
-        assert bqf1[1] % 2 == 0, "b1 is not even"
-        assert bqf2[1] % 2 == 0, "b2 is not even"
-        a, b, c, d, e, f = bqf1[0], bqf1[1] / 2, bqf1[2], bqf2[0], bqf2[1] / 2, bqf2[2]
-        self._a, self._b, self._c, self._d, self._e, self._f, self._g, self._h = [a, b, b, c, d, e, e, f]
+        """
+        For given two (primitive) binary quadratic forms `bqf1` and `bqf2`
+        of same discriminant, return a cube `c` with bqf1 = c.Q(1), bqf2 = c.Q(2).
+        Based on the Theorem 3.7 of the article "Composition and Bhargava's Cubes"
+        by Florian Bouyer.
+        """
+        D = bqf1.discriminant()
+        assert D != 0
+        assert bqf2.discriminant() == D
+        assert bqf1.is_primitive()
+        assert bqf2.is_primitive()
+
+        bqf1 = bqf1.reduced_form()
+        bqf2 = bqf2.reduced_form()
+        a, b, c = bqf1[0], bqf1[1], bqf1[2]
+        a_, b_, c_ = bqf2[0], bqf2[1], bqf2[2]
+        assert a * a_ != 0, "Both a and a' should be nonzero"
+        
+        e = gcd([a, a_, (b + b_) / 2])
+        R = IntegerModRing(a)
+        m_ = matrix(R, [[(b + b_) / 2], [a_]])
+        v_ = vector(R, [-e * c_, e * (b - b_) / 2])
+        f = ZZ(m_.solve_right(v_)[0])
+        g = (-(b - b_) * e / 2 + a_ * f) / a
+        h = (-(b + b_) * f / 2 - c_ * e) / a
+        res = BhargavaCube([0, a / e, e, f, a_ / e, (b + b_) / (-2 * e), g, h])
+        assert res.is_projective()
+        return res
 
     @staticmethod
     def from_bqf_pair(bqf1, bqf2):
         cb = BhargavaCube()
-        cb._from_bqf_pair(bqf1, bqf2)
-        return cb
-
-    def _from_bqf_triple(self, bqf1, bqf2, bqf3):
-        """Reconstruct a cube that gives three given (primitive) binary quadratic forms
-        whose composition is an identity class.
-        Based on the article "Composition and Bhargava's Cubes" by Florian Bouyer.
-        """
-        D = bqf1.discriminant()
-        assert bqf1.is_primitive()
-        assert bqf2.is_primitive()
-        assert bqf3.is_primitive()
-        assert (bqf1 * bqf2 * bqf3).reduced_form() == BinaryQF.principal(D)
-
-        
-        raise NotImplementedError
-        # check primitive
-
-    @staticmethod
-    def from_bqf_triple(bqf1, bqf2, bqf3):
-        cb = BhargavaCube()
-        cb._from_bqf_triple(bqf1, bqf2, bqf3)
-        return cb
+        return cb._from_bqf_pair(bqf1, bqf2)
 
     def _from_bcf(self, bcf):
         assert bcf._check_bc_div3()
@@ -215,6 +218,8 @@ class BhargavaCube(SageObject):
         ```
 
         Use Smith normal form and left/right actions of SL_2^3.
+        Note that normal form is not unique, and numbers can be large.
+        TODO: Small numbers.
         """
         if self.discriminant() == 0:
             raise ValueError("Discriminant should be nonzero")
@@ -248,8 +253,7 @@ class BhargavaCube(SageObject):
         if V3.det() == -1:
             V3 = V3 * I2
         res = res.matrices_action_left((I, U3, I)).matrices_action_right((V3, I, I))
-
-        assert res._a == 1 and res._b == 0 and res._c == 0 and res._e == 0, "Failed to normalize"
+        assert res.is_normal(), "Failed to normalize"
         return res
 
     @staticmethod
@@ -263,11 +267,54 @@ class BhargavaCube(SageObject):
             raise ValueError("D should be 0 or 1 modulo 4")
 
     def __mul__(self, other):
-        """Composition of two cubes."""
-        R1 = self.Q(1) * other.Q(1)
-        R2 = self.Q(2) * other.Q(2)
-        R3 = self.Q(3) * other.Q(3)
-        return BhargavaCube.from_bqf_triple(R1, R2, R3)
+        """
+        Composition of two cubes.
+        Based on the article "Composition and Bhargava's Cubes" by Florian Bouyer.
+        """
+        cs = self.normal_form()
+        co = other.normal_form()
+        D = cs.discriminant()
+        assert D == other.discriminant()
+
+        Qs1, Qs2 = cs.Q(1), cs.Q(2)
+        Qo1, Qo2 = co.Q(1), co.Q(2)
+
+
+        # When the associated binary quadratic forms are not negative definite
+        if not Qs1.is_negdef() and not Qs2.is_negdef() and not Qs2.is_negdef() and not Qo2.is_negdef():
+            R1 = Qs1 * Qo1
+            R2 = Qs2 * Qo2
+            return BhargavaCube.from_bqf_pair(R1, R2)
+
+        # When the associated binary quadratic forms are negative definite
+        # Use Dirichlet's composition
+        d, g, h = cs._d, cs._g, cs._h
+        d_, g_, h_ = co._d, co._g, co._h
+
+        e1 = gcd([d, d_, (h + h_) / 2])
+        e2 = gcd([g, g_, (h + h_) / 2])
+
+        mB1, mB2 = 2 * d / e1, 2 * d_ / e1
+        mB3 = lcm(mB1, mB2)
+        mB4 = mB1 * mB2 / mB3
+        B1_ = crt([h, h_], [mB1, mB2])  # solution mod mB3
+        for l in range(mB4):
+            if ((B1_ + l * mB3) ** 2 - D) % (mB1 * mB2) == 0:
+                B1 = B1_ + l * mB3
+                break
+
+        mB1_, mB2_ = 2 * g / e2, 2 * g_ / e2
+        mB3_ = lcm(mB1_, mB2_)
+        mB4_ = mB1_ * mB2_ / mB3_
+        B2_ = crt([h, h_], [mB1_, mB2_])  # solution mod mB3_
+        for l in range(mB4_):
+            if ((B2_ + l * mB3_) ** 2 - D) % (mB1_ * mB2_) == 0:
+                B2 = B2_ + l * mB3_
+                break
+
+        R1 = BinaryQF(ZZ(d * d_ / (e1 ** 2)), ZZ(B1), ZZ((e1 ** 2) * (B1 ** 2 - D) / (4 * d * d_)))
+        R2 = BinaryQF(ZZ(g * g_ / (e2 ** 2)), ZZ(B2), ZZ((e2 ** 2) * (B2 ** 2 - D) / (4 * g * g_)))
+        return BhargavaCube.from_bqf_pair(R1, R2)
 
     def __pow__(self, n):
         # TODO: Make faster using the class group order when D < 0
