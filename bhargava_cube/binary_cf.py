@@ -41,7 +41,9 @@ class BinaryCF(SageObject):
         return self.hessian().is_primitive()
 
     def discriminant(self):
-        return self.hessian().discriminant()
+        a, b, c, d = self._a, self._b, self._c, self._d
+        disc = (b * c) ** 2 + 18 * a * b * c * d - 4 * a * (c ** 3) - 4 * b * (d ** 3) - 27 * (a * d) ** 2
+        return disc
         
     @staticmethod
     def id(D):
@@ -62,3 +64,19 @@ class BinaryCF(SageObject):
 
     def inverse(self):
         return BinaryCF([self._a, -self._b, self._c, -self._d])
+
+    def to_cubic_ring(self):
+        """
+        Return the associated cubic ring, following Delone-Fadeev and Gan-Gross-Savin.
+        It is a ring R = Z<1, \omega, \theta> with relations
+
+        \omega \theta = -ad
+        \omega^2 = -ac + b\omega - a\theta
+        \theta^2 = -bd + d\omega - c\theta
+        """
+        a, b, c, d = self._a, self._b, self._c, self._d
+        P = ZZ['omega,theta']
+        o, t = P.gens()
+        I = P.ideal([o * t + a * d, o ** 2 + a * c - b * o + a * t, t ** 2 + b * d - d * o + c * t])
+        R = P.quotient_ring(I)
+        return R
