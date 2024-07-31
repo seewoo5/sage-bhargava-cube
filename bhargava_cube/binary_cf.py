@@ -26,11 +26,14 @@ class BinaryCF(SageObject):
     def __getitem__(self, n):
         return (self._a, self._b, self._c, self._d)[n]
 
-    def _check_bc_div3(self):
+    def _abcd(self):
+        return (self.a, self.b, self.c, self.d)
+
+    def is_bc_div3(self):
         return (self._b % 3 == 0) and (self._c % 3 == 0)
 
     def hessian(self):
-        assert self._check_bc_div3()
+        assert self.is_bc_div3()
         p = self._a
         q = self._b / 3
         r = self._c / 3
@@ -41,7 +44,7 @@ class BinaryCF(SageObject):
         return self.hessian().is_primitive()
 
     def discriminant(self):
-        a, b, c, d = self._a, self._b, self._c, self._d
+        a, b, c, d = self._abcd()
         disc = (b * c) ** 2 + 18 * a * b * c * d - 4 * a * (c ** 3) - 4 * b * (d ** 3) - 27 * (a * d) ** 2
         return disc
         
@@ -74,7 +77,7 @@ class BinaryCF(SageObject):
         \omega^2 = -ac + b\omega - a\theta
         \theta^2 = -bd + d\omega - c\theta
         """
-        a, b, c, d = self._a, self._b, self._c, self._d
+        a, b, c, d = self._abcd()
         P = ZZ['omega,theta']
         o, t = P.gens()
         I = P.ideal([o * t + a * d, o ** 2 + a * c - b * o + a * t, t ** 2 + b * d - d * o + c * t])
