@@ -104,9 +104,14 @@ class BhargavaCube(SageObject):
         return cb._from_bqf_pair(bqf1, bqf2)
 
     def _from_bcf(self, bcf):
-        assert bcf._check_bc_div3()
-        p, q, r, s = bcf[0], bcf[1] / 3, bcf[2] / 3, bcf[3]
+        assert bcf.is_bc_div3()
+        p, q, r, s = ZZ(bcf[0]), ZZ(bcf[1] / 3), ZZ(bcf[2] / 3), ZZ(bcf[3])
         self._a, self._b, self._c, self._d, self._e, self._f, self._g, self._h = [p, q, q, r, q, r, r, s]
+
+    @staticmethod
+    def from_bcf(bcf):
+        cb = BhargavaCube()
+        return cb._from_bcf(bcf)
 
     def M(self, i):
         self._check_idx(i)
