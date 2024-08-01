@@ -105,7 +105,7 @@ class BhargavaCube(SageObject):
 
     def _from_bcf(self, bcf):
         assert bcf.is_bc_div3()
-        p, q, r, s = ZZ(bcf[0]), ZZ(bcf[1] / 3), ZZ(bcf[2] / 3), ZZ(bcf[3])
+        p, q, r, s = bcf[0], bcf[1] // 3, bcf[2] // 3, bcf[3]
         self._a, self._b, self._c, self._d, self._e, self._f, self._g, self._h = [p, q, q, r, q, r, r, s]
 
     @staticmethod

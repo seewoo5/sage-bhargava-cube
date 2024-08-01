@@ -37,8 +37,8 @@ class BinaryCF(SageObject):
     def hessian(self):
         assert self.is_bc_div3()
         p = self._a
-        q = self._b / 3
-        r = self._c / 3
+        q = self._b // 3
+        r = self._c // 3
         s = self._d
         return BinaryQF([q * q - p * r, p * s - q * r, r * r - q * s])
 
@@ -64,9 +64,10 @@ class BinaryCF(SageObject):
             raise ValueError("D should be 0 or 1 modulo 4")
 
     def _cs(self):
+        assert self.is_bc_div3()
         eps = self.discriminant() % 4
         a0, a1, a2, a3 = self._abcd()
-        a1, a2 = a1 / 3, a2 / 3
+        a1, a2 = a1 // 3, a2 // 3
         c0 = ZZ((2 * a2 ** 3 - 3 * a0 * a1 * a2 + a0 * a0 * a3 - eps * a0) / 2)
         c1 = ZZ((a1 * a1 * a2 - 2 * a0 * a2 * a2 + a0 * a1 * a3 - eps * a1) / 2)
         c2 = ZZ(-(a1 * a2 * a2 - 2 * a1 * a1 * a3 + a0 * a2 * a3 + eps * a2) / 2)
@@ -81,7 +82,7 @@ class BinaryCF(SageObject):
         assert self.is_projective()
         assert other.is_projective()
 
-        D = self.discriminant()
+        D = ZZ(self.discriminant())
         eps = D % 4
         assert eps in [0, 1]
         
@@ -91,8 +92,8 @@ class BinaryCF(SageObject):
         # c_i and c_i'
         _, cs1, cs2, _ = self._cs()
         _, co1, co2, _ = other._cs()
-        as1, as2 = self[1] / 3, self[2] / 3
-        ao1, ao2 = other[1] / 3, other[2] / 3
+        as1, as2 = self[1] // 3, self[2] // 3
+        ao1, ao2 = other[1] // 3, other[2] // 3
 
         # I = <alpha, beta>, I' = <alpha', beta'>
         alphas = R(cs1 + as1 * t)
@@ -129,10 +130,10 @@ class BinaryCF(SageObject):
         Nb = Nbs * Nbo
         NN = NIs * NIo / Nas / Nao
 
-        a0_ = z0[1] / (Nb * (e ** 3))
-        a1_ = z1[1] * NN / (Nb * e)
-        a2_ = z2[1] * (NN ** 2 * e) / Nb
-        a3_ = z3[1] * (NN ** 3 * e ** 3) / Nb
+        a0_ = ZZ(z0[1] / (Nb * (e ** 3)))
+        a1_ = ZZ(z1[1] * NN / (Nb * e))
+        a2_ = ZZ(z2[1] * (NN ** 2 * e) / Nb)
+        a3_ = ZZ(z3[1] * (NN ** 3 * e ** 3) / Nb)
         return BinaryCF([a0_, 3 * a1_, 3 * a2_, a3_])
 
     def inverse(self):
