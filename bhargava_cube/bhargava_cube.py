@@ -28,15 +28,13 @@ class BhargavaCube(SageObject):
 
     The corresponding quadratic forms are defined as
 
-    Q_i = -det(x * M_i - y * N_i), i = 1, 2, 3.
+    Q_i = -det(x * M_i + y * N_i), i = 1, 2, 3.
 
-    Note that some of the literatures (e.g. "Higher composition laws and applications" by M. Bhargava) uses
+    Note that some of the literatures, including the Bharagava's original paper uses
 
-    Q_i = -det(x * M_i + y * N_i), i = 1, 2, 3
+    Q_i = -det(x * M_i - y * N_i), i = 1, 2, 3
 
     instead, which are simply inverses each other.
-
-    Also, we only deal with 'projective' cubes, i.e. the associated quadratic forms are all invertible.
     """
 
     def __init__(self, data=None):
@@ -94,7 +92,7 @@ class BhargavaCube(SageObject):
         f = ZZ(m_.solve_right(v_)[0])
         g = (-(b - b_) * e / 2 + a_ * f) / a
         h = (-(b + b_) * f / 2 - c_ * e) / a
-        res = BhargavaCube([0, a / e, e, f, a_ / e, (b + b_) / (-2 * e), g, h])
+        res = BhargavaCube([0, -a / e, -e, f, -a_ / e, (b + b_) / (-2 * e), g, -h])
         assert res.is_projective()
         return res
 
@@ -132,9 +130,16 @@ class BhargavaCube(SageObject):
             return matrix([[self._c, self._g], [self._d, self._h]])
 
     def Q(self, i):
+        """
+        Associated binary quadratic forms,
+
+        Q_i(x, y) = -det(x * M_i + y * N_i)
+
+        for i = 1, 2, 3.
+        """
         x, y = ZZ['x,y']._first_ngens(2)
         self._check_idx(i)
-        mat1 = x * self.M(i) - y * self.N(i)
+        mat1 = x * self.M(i) + y * self.N(i)
         bqf = BinaryQF(-mat1.det())
         return bqf
 
@@ -256,6 +261,19 @@ class BhargavaCube(SageObject):
         res = res.matrices_action_left((I, U3, I)).matrices_action_right((V3, I, I))
         assert res.is_normal(), "Failed to normalize"
         return res
+    
+    def is_reduced(self):
+        """Check if a cube is 'reduced', i.e. all the associated binary cubic forms Q_i are reduced."""
+        return self.Q(1).is_reduced() and self.Q(2).is_reduced() and self.Q(3).is_reduced()
+
+    def reduced_form(self):
+        """
+        Return a reduced form of a cube.
+        """
+        _, t1 = self.Q(1).reduced_form(transformation=True)
+        _, t2 = self.Q(2).reduced_form(transformation=True)
+        _, t3 = self.Q(3).reduced_form(transformation=True)
+        return self.matrices_action_right((t1, t2, t3))
 
     @staticmethod
     def id(D):
