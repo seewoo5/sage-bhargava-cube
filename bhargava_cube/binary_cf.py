@@ -155,6 +155,36 @@ class BinaryCF(SageObject):
         R = P.quotient_ring(I)
         return R
 
+    def is_reduced(self):
+        return self.hessian.is_reduced()
+
+    def reduced_form(self):
+        """
+        Reduced form of a cubic form under GL(2,ZZ) equivalence.
+        Based on the article "Reduction of binary cubic and quartic forms" by J. E. Cremona.
+
+        TODO:
+        - Reduced form under the SL(2,ZZ) equivalence
+        - Return transformation matrix together
+        """
+        D = self.discriminant()
+        if D == 0:
+            raise ValueError("Discriminant has to be nonzero.")
+
+        a_, b_, c_, d_ = self._abcd()
+        if D > 0:
+            while True:
+                k = ZZ(round(-(b_ * c_ - 9 * a_ * d_) / (2 * (b_ * b_ - 3 * a_ * c_))))
+                b_, c_, d_ = 3 * a_ * k + b_, 3 * a_ * k ** 2 + 2 * b_ * k + c_, a_ * k ** 3 + b_ * k ** 2 + c_ * k + d_
+                if b_ ** 2 - 3 * a_ * c_ > c_ ** 2 - 3 * b_ * d_:
+                    a_, b_, c_, d_ = d_, -c_, b_, -a_
+                else:
+                    break
+        else:  # D < 0
+            raise NotImplementedError("Not implemented for negative discriminant")
+        return BinaryCF([a_, b_, c_, d_])
+        
+
     def __repr__(self):
         return f"BinaryCF(a={self._a},b={self._b},c={self._c},d={self._d})"
 
